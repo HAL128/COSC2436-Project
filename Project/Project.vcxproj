@@ -123,13 +123,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="JSONManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Sentence.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="JSONManager.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Sentence.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\sentences.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
