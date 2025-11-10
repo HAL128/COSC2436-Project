@@ -41,7 +41,7 @@ void Sentence::reset()
 void Sentence::setText(const std::string& sentenceText)
 {
     text = sentenceText;
-    currentIndex = 0;  // 新しい文を設定したら位置もリセット
+    currentIndex = 0; // 新しい文を設定したら位置もリセット
 }
 
 // 文のテキストを取得する関数
