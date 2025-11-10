@@ -1,36 +1,39 @@
 // COSC 2436 Project - Haruto Hirata
 #include "Player.h"
+#include "Sentence.h"
 #include <iostream>
 
 int main()
 {
-    // Playerクラスのテスト
-    std::cout << "=== Player Class Test ===" << std::endl;
+    // Sentenceクラスのテスト
+    std::cout << "=== Sentence Class Test ===" << std::endl;
     std::cout << std::endl;
 
-    // プレイヤーを作成
-    Player player;
-    player.setUsername("TestUser");
+    // テスト用の文を作成
+    Sentence sentence("Hello World");
 
-    std::cout << "Player: " << player.getUsername() << std::endl;
-    std::cout << "Initial Score: " << player.getScore() << std::endl;
+    std::cout << "Sentence: ";
+    sentence.display();
     std::cout << std::endl;
 
-    // スコアを追加
-    player.addScore(100);
-    std::cout << "After adding 100 points: " << player.getScore() << std::endl;
-
-    player.addScore(50);
-    std::cout << "After adding 50 points: " << player.getScore() << std::endl;
-
-    // マイナスポイント（ペナルティ）を追加
-    player.addScore(-30);
-    std::cout << "After penalty -30 points: " << player.getScore() << std::endl;
+    // 文字を1つずつタイプするシミュレーション
+    std::cout << "Typing simulation:" << std::endl;
+    while (!sentence.isComplete())
+    {
+        char nextChar = sentence.getNextChar();
+        std::cout << "Next char to type: '" << nextChar << "'" << std::endl;
+        sentence.incrementIndex();
+    }
     std::cout << std::endl;
 
-    // スコアをリセット
-    player.resetScore();
-    std::cout << "After reset: " << player.getScore() << std::endl;
+    // 完了チェック
+    std::cout << "Is complete: " << (sentence.isComplete() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+
+    // リセットテスト
+    sentence.reset();
+    std::cout << "After reset, current index: " << sentence.getCurrentIndex() << std::endl;
+    std::cout << "Is complete: " << (sentence.isComplete() ? "Yes" : "No") << std::endl;
 
     return 0;
 }
