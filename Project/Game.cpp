@@ -8,7 +8,7 @@
 #include <windows.h>
 
 // コンストラクタ
-Game::Game() : userInput("")
+Game::Game() : remainingTime(TOTAL_TIME), timePenalty(0), userInput("")
 {
     // 文をシャッフルするため乱数生成器を初期化
     srand(static_cast<unsigned int>(time(nullptr)));
@@ -86,12 +86,11 @@ void Game::start()
     std::cout << "==================================" << std::endl;
     std::cout << "        Game Instructions         " << std::endl;
     std::cout << "==================================" << std::endl;
-    std::cout << "Type the sentences correctly" << std::endl;
+    std::cout << "You have 2 minutes to type as many sentences as possible" << std::endl;
     std::cout << std::endl;
     std::cout << "Correct character: +" << CORRECT_CHAR_POINTS << " points" << std::endl;
-    std::cout << "Mistake: -" << MISTAKE_SCORE_PENALTY << " points" << std::endl;
-    std::cout << std::endl;
-    std::cout << "Press ESC to quit early" << std::endl;
+    std::cout << "Complete sentence : +" << COMPLETE_SENTENCE_BONUS << " bonus points" << std::endl;
+    std::cout << "Mistake: -" << MISTAKE_TIME_PENALTY << " seconds & -" << MISTAKE_SCORE_PENALTY << " points" << std::endl;
     std::cout << std::endl;
     std::cout << "Press any key to start..." << std::endl;
     (void)_getch();
@@ -118,14 +117,21 @@ void Game::gameLoop()
     // 最初の文をランダムに読み込む
     loadNextSentence();
 
-    int sentencesCompleted = 0; // 完了した文の数をカウント
-    const int MAX_SENTENCES = 3; // この簡易版では3文ま
+    // 開始時刻を記録
+    startTime = std::chrono::steady_clock::now();
+
+    // 残り時間とペナルティをリセット
+    remainingTime = TOTAL_TIME;
+    timePenalty = 0;
 
     // プレイヤー情報を表示
     clearScreen();
     std::cout << "==================================" << std::endl;
     std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
     std::cout << "==================================" << std::endl;
+
+    // 残り時間バーを表示
+    displayTimeBar();
     std::cout << std::endl;
     std::cout << "Type the following sentence:" << std::endl;
     std::cout << std::endl;
@@ -137,9 +143,18 @@ void Game::gameLoop()
     // 初期のユーザー入力行を表示
     std::cout << "Your input: " << userInput << std::endl;
 
-    // 3文完了するまでループ
-    while (sentencesCompleted < MAX_SENTENCES)
+    // 時間が切れるまでループ
+    while (remainingTime > 0)
     {
+        // 経過時間に基づいて残り時間を計算
+        updateRemainingTime();
+
+        // 時間切れならループを抜ける
+        if (remainingTime <= 0)
+        {
+            break;
+        }
+
         // キーが押されたかチェック
         if (_kbhit())
         {
@@ -158,13 +173,11 @@ void Game::gameLoop()
             // 完了した場合、次の文を読み込む
             if (currentSentence.isComplete())
             {
-                sentencesCompleted++;
+                // 文完了のボーナスポイントを追加
+                player.addScore(COMPLETE_SENTENCE_BONUS);
                 userInput.clear();
 
-                if (sentencesCompleted < MAX_SENTENCES)
-                {
-                    loadNextSentence();
-                }
+                loadNextSentence();
             }
 
             // 画面を更新
@@ -172,24 +185,44 @@ void Game::gameLoop()
             std::cout << "==================================" << std::endl;
             std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
             std::cout << "==================================" << std::endl;
-            std::cout << std::endl;
-            std::cout << "Sentences completed: " << sentencesCompleted << "/" << MAX_SENTENCES << std::endl;
+
+            displayTimeBar();
             std::cout << std::endl;
             std::cout << "Type the following sentence:" << std::endl;
             std::cout << std::endl;
 
-            if (sentencesCompleted < MAX_SENTENCES)
-            {
-                currentSentence.display();
-                std::cout << std::endl;
-                std::cout << "Your input: " << userInput << std::endl;
-            }
-            else
-            {
-                std::cout << "All sentences completed!" << std::endl;
-            }
+            currentSentence.display();
+            std::cout << std::endl;
+            std::cout << "Your input: " << userInput << std::endl;
+        }
+
+        // CPU使用率を抑えるため少し待つ
+        Sleep(50);
+    }
+}
+
+// 残り時間をプログレスバーとして表示
+void Game::displayTimeBar() const
+{
+    int barLength = 50;
+    // 残り時間に基づいて塗りつぶし長さを計算
+    int filledLength = (remainingTime * barLength) / TOTAL_TIME;
+
+    std::cout << "Time: [";
+    for (int i = 0; i < barLength; ++i)
+    {
+        // 塗りつぶし長さ以内かチェック
+        if (i < filledLength)
+        {
+            std::cout << "=";
+        }
+        else
+        {
+            std::cout << " ";
         }
     }
+    // 残り時間を秒で表示
+    std::cout << "] " << remainingTime << "s" << std::endl;
 }
 
 // ユーザー入力文字を処理する関数
@@ -208,6 +241,7 @@ void Game::processInput(char inputChar)
     else
     {
         // ミスの場合ペナルティを適用
+        timePenalty += MISTAKE_TIME_PENALTY;
         player.addScore(-MISTAKE_SCORE_PENALTY);
     }
 }
@@ -227,4 +261,29 @@ void Game::loadNextSentence()
 void Game::clearScreen() const
 {
     system("cls");
+}
+
+// ゲーム開始からの経過時間を取得
+int Game::getElapsedTime() const
+{
+    // 現在時刻を取得
+    auto currentTime = std::chrono::steady_clock::now();
+    // 経過時間を秒単位で計算
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTime - startTime);
+    return static_cast<int>(elapsed.count()); // 秒を返す
+}
+
+// 経過時間とペナルティに基づいて残り時間を更新
+void Game::updateRemainingTime()
+{
+    // 開始からの経過時間を取得
+    int elapsed = getElapsedTime();
+    // 残り時間 = 総時間 - (経過時間 + ペナルティ)
+    remainingTime = TOTAL_TIME - elapsed - timePenalty;
+
+    // 残り時間がマイナスなら0にセット
+    if (remainingTime < 0)
+    {
+        remainingTime = 0;
+    }
 }
