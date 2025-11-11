@@ -1,14 +1,17 @@
 #include "Game.h"
 #include <iostream>
 #include <cstdlib>
+#include <ctime>
 #include <conio.h>
 
 #define NOMINMAX
 #include <windows.h>
 
 // コンストラクタ
-Game::Game()
+Game::Game() : userInput("")
 {
+    // 文をシャッフルするため乱数生成器を初期化
+    srand(static_cast<unsigned int>(time(nullptr)));
 }
 
 // メインメニューを表示する関数
@@ -48,7 +51,7 @@ void Game::showMainMenu()
     }
 }
 
-// ゲームを開始する関数（簡易版）
+// ゲームを開始する関数
 void Game::start()
 {
     clearScreen();
@@ -79,14 +82,145 @@ void Game::start()
 
     allSentences = sentences;
 
+    clearScreen();
+    std::cout << "==================================" << std::endl;
+    std::cout << "        Game Instructions         " << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << "Type the sentences correctly" << std::endl;
     std::cout << std::endl;
-    std::cout << "Loaded " << sentences.size() << " sentences successfully!" << std::endl;
+    std::cout << "Correct character: +" << CORRECT_CHAR_POINTS << " points" << std::endl;
+    std::cout << "Mistake: -" << MISTAKE_SCORE_PENALTY << " points" << std::endl;
     std::cout << std::endl;
-    std::cout << "Game will start soon..." << std::endl;
-    std::cout << "(Game loop will be implemented in the next step)" << std::endl;
+    std::cout << "Press ESC to quit early" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Press any key to start..." << std::endl;
+    (void)_getch();
+
+    // タイピングゲームをここから開始
+    gameLoop();
+
+    // ゲーム終了後、結果を表示
+    clearScreen();
+    std::cout << "==================================" << std::endl;
+    std::cout << "            Game Over!            " << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Player: " << player.getUsername() << std::endl;
+    std::cout << "Final Score: " << player.getScore() << " points" << std::endl;
     std::cout << std::endl;
     std::cout << "Press any key to return to menu..." << std::endl;
     (void)_getch();
+}
+
+// メインゲームループ関数 - タイピングと画面更新を処理
+void Game::gameLoop()
+{
+    // 最初の文をランダムに読み込む
+    loadNextSentence();
+
+    int sentencesCompleted = 0; // 完了した文の数をカウント
+    const int MAX_SENTENCES = 3; // この簡易版では3文ま
+
+    // プレイヤー情報を表示
+    clearScreen();
+    std::cout << "==================================" << std::endl;
+    std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Type the following sentence:" << std::endl;
+    std::cout << std::endl;
+
+    // 現在の文を進捗色付きで表示
+    currentSentence.display();
+    std::cout << std::endl;
+
+    // 初期のユーザー入力行を表示
+    std::cout << "Your input: " << userInput << std::endl;
+
+    // 3文完了するまでループ
+    while (sentencesCompleted < MAX_SENTENCES)
+    {
+        // キーが押されたかチェック
+        if (_kbhit())
+        {
+            // 押されたキーの文字を取得
+            char ch = _getch();
+
+            // ESCキーが押されたらbreak
+            if (ch == 27)
+            {
+                break;
+            }
+
+            // ユーザー入力文字をチェックして処理
+            processInput(ch);
+
+            // 完了した場合、次の文を読み込む
+            if (currentSentence.isComplete())
+            {
+                sentencesCompleted++;
+                userInput.clear();
+
+                if (sentencesCompleted < MAX_SENTENCES)
+                {
+                    loadNextSentence();
+                }
+            }
+
+            // 画面を更新
+            clearScreen();
+            std::cout << "==================================" << std::endl;
+            std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
+            std::cout << "==================================" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Sentences completed: " << sentencesCompleted << "/" << MAX_SENTENCES << std::endl;
+            std::cout << std::endl;
+            std::cout << "Type the following sentence:" << std::endl;
+            std::cout << std::endl;
+
+            if (sentencesCompleted < MAX_SENTENCES)
+            {
+                currentSentence.display();
+                std::cout << std::endl;
+                std::cout << "Your input: " << userInput << std::endl;
+            }
+            else
+            {
+                std::cout << "All sentences completed!" << std::endl;
+            }
+        }
+    }
+}
+
+// ユーザー入力文字を処理する関数
+void Game::processInput(char inputChar)
+{
+    // 現在の文から期待される次の文字を取得
+    char expectedChar = currentSentence.getNextChar();
+
+    // 入力文字と期待される文字を比較
+    if (inputChar == expectedChar)
+    {
+        player.addScore(CORRECT_CHAR_POINTS);
+        userInput += inputChar;
+        currentSentence.incrementIndex(); // 次の文字に移動
+    }
+    else
+    {
+        // ミスの場合ペナルティを適用
+        player.addScore(-MISTAKE_SCORE_PENALTY);
+    }
+}
+
+// 次の文をランダムに読み込む関数
+void Game::loadNextSentence()
+{
+    // ランダムなインデックスを生成
+    int randomIndex = rand() % allSentences.size();
+    // 選択された文を取得
+    std::string selectedSentence = allSentences[randomIndex];
+
+    currentSentence.setText(selectedSentence);
 }
 
 // コンソール画面をクリアする関数
