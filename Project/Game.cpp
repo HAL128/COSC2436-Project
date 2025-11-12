@@ -26,9 +26,10 @@ void Game::showMainMenu()
         std::cout << "==================================" << std::endl;
         std::cout << std::endl;
         std::cout << "1. Play Game" << std::endl;
-        std::cout << "2. Exit" << std::endl;
+        std::cout << "2. View Top 5 Rankings" << std::endl;
+        std::cout << "3. Exit" << std::endl;
         std::cout << std::endl;
-        std::cout << "Enter your choice (1-2): ";
+        std::cout << "Enter your choice (1-3): ";
 
         // 1文字入力を取得 - Enterキー不要
         char choice = _getch();
@@ -39,6 +40,14 @@ void Game::showMainMenu()
             start();
             break;
         case '2':
+            clearScreen();
+            // トップ5のランキングを表示
+            displayRanking(5);
+            std::cout << std::endl;
+            std::cout << "Press any key to return to menu..." << std::endl;
+            (void)_getch();
+            break;
+        case '3':
             clearScreen();
             std::cout << "Goodbye!" << std::endl;
             return;
@@ -259,6 +268,39 @@ void Game::loadNextSentence()
     std::string selectedSentence = allSentences[randomIndex];
 
     currentSentence.setText(selectedSentence);
+}
+
+// scores.jsonからトップ5のランキングを表示
+void Game::displayRanking(int topN) const
+{
+    // JSONファイルからスコアを読み込む
+    std::vector<PlayerScore> scores = jsonManager.loadScores("../../Project/scores.json");
+
+    // ランキングタイトルを表示
+    std::cout << "==================================" << std::endl;
+    std::cout << "         Ranking (Top " << topN << ")" << std::endl;
+    std::cout << "==================================" << std::endl;
+
+    // スコアがない場合のチェック
+    if (scores.empty())
+    {
+        std::cout << "No scores yet!" << std::endl;
+        return;
+    }
+
+    // トップ5のスコアを表示
+    int rank = 1;
+
+    // 各スコアエントリーに対して
+    for (const auto& score : scores)
+    {
+        // ランク、ユーザー名、スコアを表示
+        std::cout << rank << ". " << score.username << " - " << score.score << " points" << std::endl;
+
+        rank++;
+        if (rank > topN)
+            break;
+    }
 }
 
 // コンソール画面をクリアする関数

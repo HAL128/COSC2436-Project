@@ -56,6 +56,9 @@ public:
     // 残り時間バーを表示する関数
     void displayTimeBar() const;
 
+    // scores.jsonからトップNのランキングを表示する関数
+    void displayRanking(int topN = 10) const;
+
     // ユーザー入力文字を処理する関数 - 入力と期待される文字を比較
     void processInput(char inputChar);
 
