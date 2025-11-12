@@ -3,6 +3,8 @@
 #define PLAYER_H
 
 #include <string>
+#include <vector>
+#include "JSONManager.h"
 
 // プレイヤー情報を管理するクラス
 class Player
@@ -32,6 +34,9 @@ public:
 
     // スコアを0にリセットする関数
     void resetScore();
+
+    // スコアデータベースとランキングを更新する関数
+    void updateScoreDB(const std::string& filename, JSONManager& jsonManager);
 };
 
 #endif

@@ -106,6 +106,10 @@ void Game::start()
     std::cout << std::endl;
     std::cout << "Player: " << player.getUsername() << std::endl;
     std::cout << "Final Score: " << player.getScore() << " points" << std::endl;
+
+    // スコアをJSONファイルに保存
+    player.updateScoreDB("../../Project/scores.json", jsonManager);
+
     std::cout << std::endl;
     std::cout << "Press any key to return to menu..." << std::endl;
     (void)_getch();

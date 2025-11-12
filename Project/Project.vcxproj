@@ -136,6 +136,7 @@
     <ClInclude Include="Sentence.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\scores.json" />
     <None Include="..\sentences.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

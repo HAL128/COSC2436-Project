@@ -34,6 +34,13 @@ std::string JSONManager::parseString(const std::string& str) const
     return trimmed;
 }
 
+// JSON値の文字列を整数に変換する関数
+int JSONManager::parseInt(const std::string& str) const
+{
+    std::string trimmed = trim(str);
+    return std::stoi(trimmed);
+}
+
 // JSONファイルから文のリストを読み込む関数
 std::vector<std::string> JSONManager::loadSentences(const std::string& filename) const
 {
@@ -97,4 +104,129 @@ std::vector<std::string> JSONManager::loadSentences(const std::string& filename)
     file.close();
 
     return sentenceList;
+}
+
+// JSONファイルからスコアのリストを読み込む関数
+std::vector<PlayerScore> JSONManager::loadScores(const std::string& filename) const
+{
+    // スコアのリストを格納するベクター
+    std::vector<PlayerScore> scores;
+
+    std::ifstream file(filename);
+
+    // ファイルが開けなかった場合、空のリストを返す
+    if (!file.is_open())
+    {
+        return scores;
+    }
+
+    // ファイルの各行を保持
+    std::string line;
+    PlayerScore currentScore;
+    // オブジェクトの中にいるかどうか
+    bool inObject = false;
+
+    // ファイルから各行を読み込む
+    while (std::getline(file, line))
+    {
+        // 前後の空白を削除
+        line = trim(line);
+
+        // jsonオブジェクトの開始
+        if (line.find("{") != std::string::npos)
+        {
+            inObject = true;
+            // currentScoreを初期化
+            currentScore.username = "";
+            currentScore.score = 0;
+        }
+
+        if (inObject)
+        {
+            // "username"フィールドをチェック
+            if (line.find("\"username\"") != std::string::npos)
+            {
+                // コロンを探す
+                size_t colonPos = line.find(":");
+                if (colonPos != std::string::npos)
+                {
+                    // コロンの後の部分文字列を取得
+                    std::string value = line.substr(colonPos + 1);
+                    value = trim(value);
+                    if (value.back() == ',')
+                    {
+                        value = value.substr(0, value.length() - 1);
+                    }
+                    // 文字列をパースしてusernameを設定
+                    currentScore.username = parseString(value);
+                }
+            }
+            // "score"フィールドを探す
+            else if (line.find("\"score\"") != std::string::npos)
+            {
+                // コロンの位置を探す
+                size_t colonPos = line.find(":");
+                if (colonPos != std::string::npos)
+                {
+                    // コロンの後の部分文字列を取得
+                    std::string value = line.substr(colonPos + 1);
+                    value = trim(value);
+                    if (value.back() == ',')
+                    {
+                        value = value.substr(0, value.length() - 1);
+                    }
+                    currentScore.score = parseInt(value);
+                }
+            }
+        }
+
+        if (line.find("}") != std::string::npos && inObject)
+        {
+            inObject = false;
+            if (!currentScore.username.empty())
+            {
+                scores.push_back(currentScore);
+            }
+        }
+    }
+
+    file.close();
+    return scores;
+}
+
+// JSONファイルにスコアを保存する関数
+void JSONManager::saveScores(const std::string& filename, const std::vector<PlayerScore>& scores) const
+{
+    // 書き込み用にファイルを開く
+    std::ofstream file(filename);
+
+    // ファイルが開けなかった場合
+    if (!file.is_open())
+    {
+        std::cerr << "ERROR: Failed to open scores file for writing: " << filename << std::endl;
+        return;
+    }
+
+    // JSON配列の開始ブラケットを書き込む
+    file << "[\n";
+
+    // 各スコアオブジェクトを書き込む
+    for (size_t i = 0; i < scores.size(); ++i)
+    {
+        file << "  {\n";
+        file << "    \"username\": \"" << scores[i].username << "\",\n";
+        file << "    \"score\": " << scores[i].score << "\n";
+        file << "  }";
+
+        // 最後の要素でなければカンマを追加
+        if (i < scores.size() - 1)
+        {
+            file << ",";
+        }
+        file << "\n";
+    }
+
+    file << "]\n";
+
+    file.close();
 }
