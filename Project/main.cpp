@@ -6,12 +6,12 @@ int main()
 {
     try
     {
-        // Gameオブジェクトを作成
+        // Create a Game object
         Game game;
-        // メインメニューを表示
+        // Show main menu
         game.showMainMenu();
     }
-    catch (const std::exception& e) // 例外が発生した場合
+    catch (const std::exception& e) // if any exception occurs
     {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

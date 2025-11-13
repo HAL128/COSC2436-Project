@@ -5,47 +5,44 @@
 #include <string>
 #include <vector>
 
-// プレイヤースコア情報を格納する構造体
 struct PlayerScore
 {
-    std::string username; // ユーザー名
-    int score; // スコア
+    std::string username; // username
+    int score; // score
 };
 
-// JSON形式のファイルを読み書きするクラス
 class JSONManager
 {
 public:
-    // コンストラクタ
     JSONManager();
 
-    // JSONファイルから文のリストを読み込む関数
-    // @param filename: JSONファイルのパス
-    // @return 文のリスト
+    // Read sentences from JSON file
+    // @param filename: path to JSON file
+    // @return list of sentences
     std::vector<std::string> loadSentences(const std::string& filename) const;
 
-    // JSONファイルからスコアのリストを読み込む関数
-    // @param filename: JSONファイルのパス
-    // @return PlayerScore構造体のリスト
+    // Read scores from JSON file
+    // @param filename: path to JSON file
+    // @return list of PlayerScore structs
     std::vector<PlayerScore> loadScores(const std::string& filename) const;
 
-    // JSONファイルにスコアのリストを保存する関数
-    // @param filename: JSONファイルのパス
-    // @param scores: 保存するPlayerScore構造体のリスト
+    // Save scores to JSON file
+    // @param filename: path to JSON file
+    // @param scores: list of PlayerScore structs to save
     void saveScores(const std::string& filename, const std::vector<PlayerScore>& scores) const;
 
 private:
-    // 文字列の前後の空白を削除する関数
+    // delete copy constructor and assignment operator to prevent copying
     std::string trim(const std::string& str) const;
 
-    // JSON文字列値から実際の文字列を抽出する関数
-    // @param str: JSON文字列値
-    // @return ダブルクオートを除いた文字列
+    // extract string value from JSON string
+    // @param str: JSON string value
+    // @return parsed string without quotes
     std::string parseString(const std::string& str) const;
 
-    // JSON値の文字列を整数に変換する関数
-    // @param str: JSON整数値
-    // @return パースされた整数
+    // convert string to integer of JSON value
+    // @param str: JSON integer value
+    // @return parsed integer
     int parseInt(const std::string& str) const;
 };
 

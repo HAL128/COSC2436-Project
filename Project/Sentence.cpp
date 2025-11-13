@@ -1,65 +1,99 @@
 #include "Sentence.h"
 #include <iostream>
 
-// デフォルトコンストラクタ：空の文で初期化
+#define NOMINMAX
+#include <windows.h>
+
+// Constructor with empty sentence
 Sentence::Sentence() : text(""), currentIndex(0) {}
 
-// 文を指定するコンストラクタ
+// Constructor with specified sentence
 Sentence::Sentence(const std::string& sentenceText) : text(sentenceText), currentIndex(0) {}
 
-// 次にタイプすべき文字を取得する関数
+// Get the next character to type
 char Sentence::getNextChar() const
 {
-    // 現在の位置が文の長さより小さい場合
     if (currentIndex < text.length())
     {
         return text[currentIndex];
     }
-    // 文の終わりを超えている場合はヌル文字を返す
     return '\0';
 }
 
-// 文のタイピングが完了したかチェックする関数
+// Check if typing the sentence is complete
 bool Sentence::isComplete() const
 {
     return currentIndex >= text.length();
 }
 
-// 文を通常表示する関数
+// Display the sentence normally
 void Sentence::display() const
 {
     std::cout << text << std::endl;
 }
 
-// 進捗をリセットする関数
+// Display the sentence with progress coloring
+void Sentence::displayWithProgress(const std::string& userInput) const
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    for (size_t i = 0; i < text.length(); ++i)
+    {
+        if (i < userInput.length())
+        {
+            // already typed - display in green
+            SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+            std::cout << text[i];
+        }
+        else if (i == userInput.length())
+        {
+            // current character to type - display in yellow
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+            std::cout << text[i];
+        }
+        else
+        {
+            // not yet typed - display in white
+            SetConsoleTextAttribute(hConsole, 7);
+            std::cout << text[i];
+        }
+    }
+
+    // reset color to white
+    SetConsoleTextAttribute(hConsole, 7);
+
+    // fill rest of line with spaces
+    std::cout << std::string(80, ' ');
+}
+
+// Reset progress
 void Sentence::reset()
 {
     currentIndex = 0;
 }
 
-// 文のテキストを設定する関数
+// Set the sentence text
 void Sentence::setText(const std::string& sentenceText)
 {
     text = sentenceText;
-    currentIndex = 0; // 新しい文を設定したら位置もリセット
+    currentIndex = 0;
 }
 
-// 文のテキストを取得する関数
+// Get the sentence text
 std::string Sentence::getText() const
 {
     return text;
 }
 
-// 現在の文字位置を取得する関数
+// Get the current character index
 size_t Sentence::getCurrentIndex() const
 {
     return currentIndex;
 }
 
-// 次の文字に移動する関数
+// Move to next character
 void Sentence::incrementIndex()
 {
-    // 文の長さを超えない範囲で位置を進める
     if (currentIndex < text.length())
     {
         currentIndex++;

@@ -6,36 +6,36 @@
 #include <vector>
 #include "JSONManager.h"
 
-// プレイヤー情報を管理するクラス
+// Class to manage player (user) information
 class Player
 {
 private:
-    std::string username; // ユーザー名
-    int score; // 現在のスコア
+    std::string username; // username
+    int score; // current score
 
 public:
-    // デフォルトコンストラクタ：空の名前とスコア0で初期化
+    // Constructor with empty name and score 0
     Player();
 
-    // 名前を指定するコンストラクタ
+    // Set constructor with specified name
     Player(const std::string& name);
 
-    // スコアにポイントを追加する関数
+    // Add points to score
     void addScore(int points);
 
-    // ユーザー名を設定する関数
+    // Set username
     void setUsername(const std::string& name);
 
-    // ユーザー名を取得する関数
+    // Get username
     std::string getUsername() const;
 
-    // 現在のスコアを取得する関数
+    // Get current score
     int getScore() const;
 
-    // スコアを0にリセットする関数
+    // Reset score to 0
     void resetScore();
 
-    // スコアデータベースとランキングを更新する関数
+    // Update score database and ranking
     void updateScoreDB(const std::string& filename, JSONManager& jsonManager);
 };
 

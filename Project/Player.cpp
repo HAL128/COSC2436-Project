@@ -2,63 +2,62 @@
 #include <algorithm>
 #include <iostream>
 
-// デフォルトコンストラクタ：空の名前とスコア0で初期化
+// Constructor with empty name and score 0
 Player::Player() : username(""), score(0) {}
 
-// 名前を指定するコンストラクタ
+// Constructor with specified name
 Player::Player(const std::string& name) : username(name), score(0) {}
 
-// スコアにポイントを追加する関数
-// マイナスのポイントも追加可能（ペナルティとして）
+// Add points to score
 void Player::addScore(int points)
 {
     score += points;
-    // スコアがマイナスにならないようにする
+    // Ensure score doesn't go negative
     if (score < 0)
     {
         score = 0;
     }
 }
 
-// ユーザー名を設定する関数
+// Set username
 void Player::setUsername(const std::string& name)
 {
     username = name;
 }
 
-// ユーザー名を取得する関数
+// Get username
 std::string Player::getUsername() const
 {
     return username;
 }
 
-// 現在のスコアを取得する関数
+// Get current score
 int Player::getScore() const
 {
     return score;
 }
 
-// スコアを0にリセットする関数
+// Reset score to 0
 void Player::resetScore()
 {
     score = 0;
 }
 
-// スコアデータベースとランキングを更新する関数
-// @param filename: JSONスコアファイルへのパス
-// @param jsonManager: ファイル操作用のJSONManagerインスタンス
+// Update score database and ranking
+// @param filename: path to JSON score file
+// @param jsonManager: JSONManager instance for file operations
 void Player::updateScoreDB(const std::string& filename, JSONManager& jsonManager)
 {
-    // 既存のスコアデータを読み込む
+    // Load existing score data
     std::vector<PlayerScore> scores = jsonManager.loadScores(filename);
 
-    // 同じユーザー名が既に存在するかチェック
+    // Check if the same username already exists
     bool found = false;
     for (auto& playerScore : scores)
     {
         if (playerScore.username == username)
         {
-            // 現在のスコアが既存のスコアより高い場合のみ更新
+            // Update only if current score is higher than existing score
             if (score > playerScore.score)
             {
                 playerScore.score = score;
@@ -69,7 +68,7 @@ void Player::updateScoreDB(const std::string& filename, JSONManager& jsonManager
         }
     }
 
-    // 新規ユーザーの場合、リストに追加
+    // If new user, add to list
     if (!found)
     {
         PlayerScore newScore;
@@ -78,10 +77,10 @@ void Player::updateScoreDB(const std::string& filename, JSONManager& jsonManager
         scores.push_back(newScore);
     }
 
-    // スコアを降順にソート（ランキング作成）
+    // Sort scores in desc (create ranking)
     std::sort(scores.begin(), scores.end(), [](const PlayerScore& a, const PlayerScore& b)
         { return a.score > b.score; });
 
-    // 更新されたスコアデータをファイルに保存
+    // Save updated score data to file
     jsonManager.saveScores(filename, scores);
 }

@@ -1,23 +1,26 @@
 #include "Game.h"
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <ctime>
+#include <algorithm>
 #include <conio.h>
+#include <thread>
 
-#define NOMINMAX
+#define NOMINMAX // disable macro min/max in Windows.h
 #include <windows.h>
 
-// コンストラクタ
-Game::Game() : remainingTime(TOTAL_TIME), timePenalty(0), userInput("")
+// initialize static constants
+Game::Game() : remainingTime(TOTAL_TIME), timePenalty(0), userInput("") // initialize remaining time, penalty, input string
 {
-    // 文をシャッフルするため乱数生成器を初期化
+    // initialize random number generator for shuffling sentences
     srand(static_cast<unsigned int>(time(nullptr)));
 }
 
-// メインメニューを表示する関数
+// display main menu
 void Game::showMainMenu()
 {
-    // 無限ループ - ユーザーが終了を選ぶまで繰り返す
+    // infinite loop - repeat until user chooses to exit
     while (true)
     {
         clearScreen();
@@ -27,11 +30,12 @@ void Game::showMainMenu()
         std::cout << std::endl;
         std::cout << "1. Play Game" << std::endl;
         std::cout << "2. View Top 5 Rankings" << std::endl;
-        std::cout << "3. Exit" << std::endl;
+        std::cout << "3. Add New Sentence" << std::endl;
+        std::cout << "4. Exit" << std::endl;
         std::cout << std::endl;
-        std::cout << "Enter your choice (1-3): ";
+        std::cout << "Enter your choice (1-4): ";
 
-        // 1文字入力を取得 - Enterキー不要
+        // get a single character input - no Enter needed
         char choice = _getch();
 
         switch (choice)
@@ -41,26 +45,96 @@ void Game::showMainMenu()
             break;
         case '2':
             clearScreen();
-            // トップ5のランキングを表示
+            // display top 5 rankings
             displayRanking(5);
             std::cout << std::endl;
             std::cout << "Press any key to return to menu..." << std::endl;
             (void)_getch();
             break;
         case '3':
+            // display add sentence screen
+            addSentence();
+            break;
+        case '4':
             clearScreen();
             std::cout << "Goodbye!" << std::endl;
             return;
-            // その他のキーが押された場合
+            // if any other key is pressed
         default:
             std::cout << "Invalid choice. Please try again." << std::endl;
-            Sleep(1000); // ユーザーがメッセージを読むまで待つ
+            Sleep(1000); // wait for user to read message
             break;
         }
     }
 }
 
-// ゲームを開始する関数
+// choice 3: add new sentence to JSON file
+void Game::addSentence()
+{
+    clearScreen();
+    std::cout << "==================================" << std::endl;
+    std::cout << "         Add New Sentence         " << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << std::endl;
+
+    // variable to store new sentence
+    std::string newSentence;
+    std::cout << "Enter a new sentence (or press Enter to cancel): " << std::endl;
+
+    // get user input line
+    std::getline(std::cin, newSentence);
+
+    // check if input is empty
+    if (newSentence.empty())
+    {
+        std::cout << "Cancelled." << std::endl;
+        Sleep(1000); // wait for user to read message
+        return;
+    }
+
+    // read existing sentences from JSON file
+    std::vector<std::string> sentences = jsonManager.loadSentences("../../Project/sentences.json");
+
+    // add the new sentence to the list
+    sentences.push_back(newSentence);
+
+    // open file to save updated sentences
+    std::ofstream file("../../Project/sentences.json");
+
+    // check if file opened successfully
+    if (file.is_open())
+    {
+        // write first line of JSON array ([)
+        file << "[\n";
+        // write each sentence in JSON format
+        for (size_t i = 0; i < sentences.size(); ++i)
+        {
+            file << "  \"" << sentences[i] << "\"";
+            if (i < sentences.size() - 1)
+            {
+                file << ",";
+            }
+            file << "\n";
+        }
+        file << "]\n";
+        // close the file
+        file.close();
+
+        std::cout << std::endl;
+        std::cout << "Sentence added successfully!" << std::endl;
+    }
+    // if file could not be opened
+    else
+    {
+        std::cout << std::endl;
+        std::cout << "Error: Could not save the sentence." << std::endl;
+    }
+
+    std::cout << "Press any key to return to menu..." << std::endl;
+    (void)_getch();
+}
+
+// choice 1: start the game
 void Game::start()
 {
     clearScreen();
@@ -69,18 +143,18 @@ void Game::start()
     std::cout << "==================================" << std::endl;
     std::cout << std::endl;
 
-    // ユーザー名を入力
+    // variable to store username
     std::string username;
     std::cout << "Enter your username: ";
-    // ユーザー名の入力行を取得
+    // get username input line
     std::getline(std::cin, username);
     player.setUsername(username);
     player.resetScore();
 
-    // JSONファイルから文のデータを読み込む
+    // load sentence data from JSON file
     std::vector<std::string> sentences = jsonManager.loadSentences("../../Project/sentences.json");
 
-    // 文が読み込めたかチェック
+    // check if any sentences were loaded
     if (sentences.empty())
     {
         std::cout << "Error: Could not load sentences!" << std::endl;
@@ -90,6 +164,7 @@ void Game::start()
     }
 
     allSentences = sentences;
+    availableSentences = allSentences;
 
     clearScreen();
     std::cout << "==================================" << std::endl;
@@ -104,10 +179,48 @@ void Game::start()
     std::cout << "Press any key to start..." << std::endl;
     (void)_getch();
 
-    // タイピングゲームをここから開始
+    // typing game starts here
     gameLoop();
 
-    // ゲーム終了後、結果を表示
+    // after game ends, show calculating screen (to avoid accidental input)
+    showCalculatingScreen();
+
+    // get current score before saving
+    int currentScore = player.getScore();
+    std::string currentUsername = player.getUsername();
+
+    // load existing scores to check records
+    std::vector<PlayerScore> existingScores = jsonManager.loadScores("../../Project/scores.json");
+
+    // find user's previous best score
+    int userPreviousBest = 0;
+    for (const auto& score : existingScores)
+    {
+        if (score.username == currentUsername)
+        {
+            userPreviousBest = score.score;
+            break;
+        }
+    }
+
+    // find global best score
+    int globalBest = 0;
+    if (!existingScores.empty())
+    {
+        globalBest = existingScores[0].score; // already sorted in desc order
+        for (const auto& score : existingScores)
+        {
+            if (score.score > globalBest) // just in case
+            {
+                globalBest = score.score;
+            }
+        }
+    }
+
+    bool isPersonalBest = (currentScore > userPreviousBest); // check personal best
+    bool isGlobalBest = (currentScore > globalBest); // check global best
+
+    // display game over and results
     clearScreen();
     std::cout << "==================================" << std::endl;
     std::cout << "            Game Over!            " << std::endl;
@@ -116,115 +229,239 @@ void Game::start()
     std::cout << "Player: " << player.getUsername() << std::endl;
     std::cout << "Final Score: " << player.getScore() << " points" << std::endl;
 
-    // スコアをJSONファイルに保存
+    // save score to JSON file
     player.updateScoreDB("../../Project/scores.json", jsonManager);
+
+    // show special message if record was broken
+    if (isGlobalBest)
+    {
+        // display global best record message (Green color)
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        std::cout << std::endl;
+        std::cout << "******************************************" << std::endl;
+        std::cout << "**    === ALL-TIME RECORD BROKEN ===    **" << std::endl;
+        std::cout << "**                                      **" << std::endl;
+        std::cout << "**          CONGRATULATIONS !!          **" << std::endl;
+        std::cout << "******************************************" << std::endl;
+        SetConsoleTextAttribute(hConsole, 7);
+        std::cout << std::endl;
+    }
+    else if (isPersonalBest)
+    {
+        // display personal best record message
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        std::cout << std::endl;
+        std::cout << "******************************************" << std::endl;
+        std::cout << "**    === PERSONAL RECORD BROKEN ===    **" << std::endl;
+        std::cout << "**                                      **" << std::endl;
+        std::cout << "**          CONGRATULATIONS !!          **" << std::endl;
+        std::cout << "******************************************" << std::endl;
+        SetConsoleTextAttribute(hConsole, 7);
+        std::cout << std::endl;
+    }
+
+    bool isNewTopFiveEntry = false;
+    if (isPersonalBest || isGlobalBest)
+    {
+        // reload scores after saving to get updated ranking
+        std::vector<PlayerScore> updatedScores = jsonManager.loadScores("../../Project/scores.json");
+
+        // check if user is in top 5
+        int userRank = 0;
+        for (size_t i = 0; i < updatedScores.size() && i < 5; ++i)
+        {
+            if (updatedScores[i].username == currentUsername)
+            {
+                userRank = i + 1;
+                isNewTopFiveEntry = true;
+                break;
+            }
+        }
+    }
+
+    std::cout << std::endl;
+    // if user made it to top 5, highlight their name with green color
+    displayRanking(5, currentUsername, isNewTopFiveEntry);
 
     std::cout << std::endl;
     std::cout << "Press any key to return to menu..." << std::endl;
     (void)_getch();
 }
 
-// メインゲームループ関数 - タイピングと画面更新を処理
+// show calculating results screen for 3 seconds (to avoid accidental input by user)
+void Game::showCalculatingScreen()
+{
+    clearScreen();
+    std::cout << "==================================" << std::endl;
+    std::cout << "      Calculating Results..." << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << std::endl;
+    std::cout << "         Please wait..." << std::endl;
+    std::cout << std::endl;
+
+    // progress bar animation
+    for (int i = 0; i <= 30; ++i)
+    {
+        std::cout << "\r[";
+        for (int j = 0; j < 30; ++j)
+        {
+            if (j < i)
+            {
+                std::cout << "=";
+            }
+            else
+            {
+                std::cout << " ";
+            }
+        }
+        // percent display
+        std::cout << "] " << (i * 100 / 30) << "%";
+        std::cout.flush();
+        Sleep(100); // 100ms * 30 = 3 seconds
+    }
+    std::cout << std::endl;
+}
+
+// main game loop function - handles typing and screen updates
 void Game::gameLoop()
 {
-    // 最初の文をランダムに読み込む
+    // load the first sentence randomly
     loadNextSentence();
 
-    // 開始時刻を記録
+    // record start time
     startTime = std::chrono::steady_clock::now();
 
-    // 残り時間とペナルティをリセット
+    // reset remaining time and penalty
     remainingTime = TOTAL_TIME;
     timePenalty = 0;
 
-    // プレイヤー情報を表示
+    // display player info
     clearScreen();
     std::cout << "==================================" << std::endl;
     std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
     std::cout << "==================================" << std::endl;
 
-    // 残り時間バーを表示
+    // display remaining time bar
     displayTimeBar();
     std::cout << std::endl;
     std::cout << "Type the following sentence:" << std::endl;
     std::cout << std::endl;
 
-    // 現在の文を進捗色付きで表示
-    currentSentence.display();
+    // display the current sentence with progress coloring
+    currentSentence.displayWithProgress(userInput);
     std::cout << std::endl;
 
-    // 初期のユーザー入力行を表示
+    // display initial user input line
     std::cout << "Your input: " << userInput << std::endl;
 
-    // 時間が切れるまでループ
+    // record last displayed remaining time and score
+    int lastDisplayedTime = remainingTime;
+    int lastScore = player.getScore();
+
+    // loop until time runs out
     while (remainingTime > 0)
     {
-        // 経過時間に基づいて残り時間を計算
+        // calculate remaining time based on elapsed time
         updateRemainingTime();
 
-        // 時間切れならループを抜ける
+        // if time is up, break the loop
         if (remainingTime <= 0)
         {
             break;
         }
 
-        // キーが押されたかチェック
+        // check if remaining time or score has changed -> need to update display
+        bool needsUpdate = (remainingTime != lastDisplayedTime) || (player.getScore() != lastScore);
+
+        // check if a key has been pressed
         if (_kbhit())
         {
-            // 押されたキーの文字を取得
+            // get pressed key character
             char ch = _getch();
 
-            // ESCキーが押されたらbreak
+            // if ESC key pressed, break
             if (ch == 27)
             {
                 break;
             }
 
-            // ユーザー入力文字をチェックして処理
+            // check and process user input character
             processInput(ch);
 
-            // 完了した場合、次の文を読み込む
+            // if complete, load next sentence
             if (currentSentence.isComplete())
             {
-                // 文完了のボーナスポイントを追加
+                // add bonus points for completing the sentence
                 player.addScore(COMPLETE_SENTENCE_BONUS);
                 userInput.clear();
 
                 loadNextSentence();
             }
 
-            // 画面を更新
-            clearScreen();
-            std::cout << "==================================" << std::endl;
-            std::cout << "   Player: " << player.getUsername() << " | Score: " << player.getScore() << std::endl;
-            std::cout << "==================================" << std::endl;
-
-            displayTimeBar();
-            std::cout << std::endl;
-            std::cout << "Type the following sentence:" << std::endl;
-            std::cout << std::endl;
-
-            currentSentence.display();
-            std::cout << std::endl;
-            std::cout << "Your input: " << userInput << std::endl;
+            // display needs to be updated due to input
+            needsUpdate = true;
         }
 
-        // CPU使用率を抑えるため少し待つ
-        Sleep(50);
+        // if time or score changed or input processed, update display
+        if (needsUpdate)
+        {
+            // move cursor to top-left corner to overwrite entire screen
+            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+            // initialize coordinate struct for top-left corner
+            COORD coord = { 0, 0 };
+
+            // set cursor position to (0,0)
+            SetConsoleCursorPosition(hConsole, coord);
+
+            // display player info
+            std::string line1 = "==================================";
+            std::string line2 = "   Player: " + player.getUsername() + " | Score: " + std::to_string(player.getScore());
+
+            // fill line1 to 80 characters
+            line2 += std::string(80 - line2.length(), ' ');
+
+            std::cout << line1 << std::endl;
+
+            // display player info line
+            std::cout << line2 << std::endl;
+            std::cout << line1 << std::endl;
+            std::cout << std::string(80, ' ') << std::endl;
+
+            // display remaining time bar
+            displayTimeBar();
+            std::cout << std::string(80, ' ') << std::endl;
+            std::cout << "Type the following sentence:" << std::string(60, ' ') << std::endl;
+            std::cout << std::string(80, ' ') << std::endl;
+
+            // display current sentence with progress coloring
+            currentSentence.displayWithProgress(userInput);
+            std::cout << std::endl;
+
+            // display user input line (clear previous input first)
+            std::cout << "\r" << std::string(150, ' ') << "\r"; // clear input line and return to beginning
+            std::string inputLine = "Your input: " + userInput;
+            std::cout << inputLine << std::endl;
+
+            lastDisplayedTime = remainingTime;
+            lastScore = player.getScore();
+        }
     }
 }
 
-// 残り時間をプログレスバーとして表示
+// remaining time as a progress bar
 void Game::displayTimeBar() const
 {
     int barLength = 50;
-    // 残り時間に基づいて塗りつぶし長さを計算
+    // calculate filled length based on remaining time
     int filledLength = (remainingTime * barLength) / TOTAL_TIME;
 
     std::cout << "Time: [";
     for (int i = 0; i < barLength; ++i)
     {
-        // 塗りつぶし長さ以内かチェック
+        // check if within filled length
         if (i < filledLength)
         {
             std::cout << "=";
@@ -234,68 +471,56 @@ void Game::displayTimeBar() const
             std::cout << " ";
         }
     }
-    // 残り時間を秒で表示
-    std::cout << "] " << remainingTime << "s" << std::endl;
+    // display remaining time in seconds
+    std::string timeStr = "] " + std::to_string(remainingTime) + "s";
+    std::cout << timeStr << std::string(20, ' ') << std::endl;
 }
 
-// ユーザー入力文字を処理する関数
-void Game::processInput(char inputChar)
+// display top 5 rankings from scores.json
+void Game::displayRanking(int topN, const std::string& highlightUsername, bool shouldHighlight) const
 {
-    // 現在の文から期待される次の文字を取得
-    char expectedChar = currentSentence.getNextChar();
-
-    // 入力文字と期待される文字を比較
-    if (inputChar == expectedChar)
-    {
-        player.addScore(CORRECT_CHAR_POINTS);
-        userInput += inputChar;
-        currentSentence.incrementIndex(); // 次の文字に移動
-    }
-    else
-    {
-        // ミスの場合ペナルティを適用
-        timePenalty += MISTAKE_TIME_PENALTY;
-        player.addScore(-MISTAKE_SCORE_PENALTY);
-    }
-}
-
-// 次の文をランダムに読み込む関数
-void Game::loadNextSentence()
-{
-    // ランダムなインデックスを生成
-    int randomIndex = rand() % allSentences.size();
-    // 選択された文を取得
-    std::string selectedSentence = allSentences[randomIndex];
-
-    currentSentence.setText(selectedSentence);
-}
-
-// scores.jsonからトップ5のランキングを表示
-void Game::displayRanking(int topN) const
-{
-    // JSONファイルからスコアを読み込む
+    // read scores from JSON file
     std::vector<PlayerScore> scores = jsonManager.loadScores("../../Project/scores.json");
 
-    // ランキングタイトルを表示
+    // display ranking title
     std::cout << "==================================" << std::endl;
     std::cout << "         Ranking (Top " << topN << ")" << std::endl;
     std::cout << "==================================" << std::endl;
 
-    // スコアがない場合のチェック
+    // check if there are no scores
     if (scores.empty())
     {
         std::cout << "No scores yet!" << std::endl;
         return;
     }
 
-    // トップ5のスコアを表示
+    // display top 5 scores
     int rank = 1;
 
-    // 各スコアエントリーに対して
+    // for each score entry
     for (const auto& score : scores)
     {
-        // ランク、ユーザー名、スコアを表示
+        // determine if this entry should be highlighted
+        bool shouldHighlightThisEntry = (shouldHighlight && score.username == highlightUsername);
+
+        if (shouldHighlightThisEntry)
+        {
+            // get console handle
+            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+            SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        }
+
+        // display rank, username, and score
         std::cout << rank << ". " << score.username << " - " << score.score << " points" << std::endl;
+
+        // reset color if highlighted
+        if (shouldHighlightThisEntry)
+        {
+            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+            // reset to white
+            SetConsoleTextAttribute(hConsole, 7);
+        }
 
         rank++;
         if (rank > topN)
@@ -303,31 +528,80 @@ void Game::displayRanking(int topN) const
     }
 }
 
-// コンソール画面をクリアする関数
+// Process user input character
+void Game::processInput(char inputChar)
+{
+    // get the expected next character from the current sentence
+    char expectedChar = currentSentence.getNextChar();
+
+    // compare input character with expected character
+    if (inputChar == expectedChar)
+    {
+        player.addScore(CORRECT_CHAR_POINTS);
+        userInput += inputChar;
+        currentSentence.incrementIndex(); // move to next character
+    }
+    else
+    {
+        // apply penalties for mistake
+        timePenalty += MISTAKE_TIME_PENALTY;
+        player.addScore(-MISTAKE_SCORE_PENALTY);
+    }
+}
+
+// load the next sentence (avoid duplicates using stack!!)
+void Game::loadNextSentence()
+{
+    // If no available sentences, reset from used stack
+    if (availableSentences.empty())
+    {
+        availableSentences = allSentences;
+        while (!usedSentences.empty())
+        {
+            // pop used sentences from stack
+            usedSentences.pop();
+        }
+    }
+
+    // generate random index
+    int randomIndex = rand() % availableSentences.size();
+    // get selected sentence
+    std::string selectedSentence = availableSentences[randomIndex];
+
+    currentSentence.setText(selectedSentence);
+
+    // add selected sentence to used stack
+    usedSentences.push(selectedSentence);
+
+    // remove selected sentence from available list
+    availableSentences.erase(availableSentences.begin() + randomIndex);
+}
+
+// Clear the console screen
 void Game::clearScreen() const
 {
     system("cls");
 }
 
-// ゲーム開始からの経過時間を取得
+// Get elapsed time since game start
 int Game::getElapsedTime() const
 {
-    // 現在時刻を取得
+    // get current time point
     auto currentTime = std::chrono::steady_clock::now();
-    // 経過時間を秒単位で計算
+    // calculate elapsed time duration in seconds
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTime - startTime);
-    return static_cast<int>(elapsed.count()); // 秒を返す
+    return static_cast<int>(elapsed.count()); // return seconds
 }
 
-// 経過時間とペナルティに基づいて残り時間を更新
+// update remaining time based on elapsed time and penalties
 void Game::updateRemainingTime()
 {
-    // 開始からの経過時間を取得
+    // get elapsed time since start
     int elapsed = getElapsedTime();
-    // 残り時間 = 総時間 - (経過時間 + ペナルティ)
+    // remaining time = total time - (elapsed + penalty)
     remainingTime = TOTAL_TIME - elapsed - timePenalty;
 
-    // 残り時間がマイナスなら0にセット
+    // if remaining time is negative, set to 0
     if (remainingTime < 0)
     {
         remainingTime = 0;

@@ -4,49 +4,53 @@
 
 #include <string>
 
-// タイピングする文と進捗を管理するクラス
+// Class to manage typing sentences and progress
 class Sentence
 {
 private:
-    std::string text; // 文のテキスト
-    size_t currentIndex; // 現在の文字位置
+    std::string text;
+    size_t currentIndex;
 
 public:
-    // デフォルトコンストラクタ：空の文で初期化
+    // Constructor with empty sentence
     Sentence();
 
-    // 文を指定するコンストラクタ
-    // @param sentenceText: タイピングする文
+    // Constructor with specified sentence
+    // @param sentenceText: sentence to type
     Sentence(const std::string& sentenceText);
 
-    // 次にタイプすべき文字を取得する関数
-    // @return 次にタイプすべき文字
+    // Get the next character to type
+    // @return next character to type
     char getNextChar() const;
 
-    // 文のタイピングが完了したかチェックする関数
-    // @return 完了していればtrue、そうでなければfalse
+    // Check if typing the sentence is complete
+    // @return true if complete, false otherwise
     bool isComplete() const;
 
-    // 文を通常表示する関数
+    // Display the sentence normally
     void display() const;
 
-    // 進捗をリセットする関数
-    // 現在の位置を0に戻す
+    // Display the sentence with progress coloring
+    // @param userInput: string of characters already typed by the player
+    void displayWithProgress(const std::string& userInput) const;
+
+    // Reset progress
+    // Set current index back to 0
     void reset();
 
-    // 文のテキストを設定する関数
-    // @param sentenceText: 新しい文
+    // Set the sentence text
+    // @param sentenceText: new sentence to set
     void setText(const std::string& sentenceText);
 
-    // 文のテキストを取得する関数
-    // @return 現在の文
+    // Get the sentence text
+    // @return current sentence text
     std::string getText() const;
 
-    // 現在の文字位置を取得する関数
-    // @return 現在の位置
+    // Get the current character index
+    // @return current index
     size_t getCurrentIndex() const;
 
-    // 次の文字に移動する関数
+    // Move to next character
     void incrementIndex();
 };
 

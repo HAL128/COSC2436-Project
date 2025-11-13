@@ -1,32 +1,36 @@
 #include "JSONManager.h"
 #include <fstream>
+#include <sstream>
+#include <algorithm>
 #include <iostream>
+#include <cstdlib>
 
-// コンストラクタ
+#define NOMINMAX // disable macro min/max in Windows.h so we can use std::min/std::max
+#include <direct.h>
+
 JSONManager::JSONManager() {}
 
-// 文字列の前後の空白を削除する関数
+// Trim to remove leading/trailing whitespace
 std::string JSONManager::trim(const std::string& str) const
 {
-    // 最初の非空白文字を探す
+    // find first non-whitespace character
     size_t first = str.find_first_not_of(" \t\n\r");
 
-    // 文字列が全て空白の場合
+    // check if the string is all whitespace
     if (first == std::string::npos)
         return "";
 
-    // 最後の非空白文字を探す
+    // find last non-whitespace character
     size_t last = str.find_last_not_of(" \t\n\r");
 
-    // 最初から最後までの部分文字列を返す
+    // return the substring from first to last
     return str.substr(first, (last - first + 1));
 }
 
-// JSON文字列値から実際の文字列を抽出する関数
+// extract string value from JSON string
 std::string JSONManager::parseString(const std::string& str) const
 {
     std::string trimmed = trim(str);
-    // 前後のダブルクオートを除去
     if (trimmed.front() == '"' && trimmed.back() == '"')
     {
         return trimmed.substr(1, trimmed.length() - 2);
@@ -34,64 +38,61 @@ std::string JSONManager::parseString(const std::string& str) const
     return trimmed;
 }
 
-// JSON値の文字列を整数に変換する関数
+// convert string to integer of JSON value
 int JSONManager::parseInt(const std::string& str) const
 {
     std::string trimmed = trim(str);
     return std::stoi(trimmed);
 }
 
-// JSONファイルから文のリストを読み込む関数
+// read sentences from JSON file
 std::vector<std::string> JSONManager::loadSentences(const std::string& filename) const
 {
-    // 文のリストを格納するベクター
     std::vector<std::string> sentenceList;
 
-    // ファイルを開く
     std::ifstream file(filename);
 
-    // ファイルが正常に開けたかチェック
+    // check if file opened successfully
     if (!file.is_open())
     {
         std::cerr << "ERROR: Failed to open sentences file: " << filename << std::endl;
         return sentenceList;
     }
 
-    // ファイルを1行ずつ読み込む
+    // read file line by line
     std::string line;
-    // 配列の中にいるかどうかのフラグ
+    // unless we are inside the array
     bool inArray = false;
 
-    // 各行を読み込む
+    // read each line from the file
     while (std::getline(file, line))
     {
-        // 前後の空白を削除
+        // delete leading/trailing whitespace
         line = trim(line);
 
-        // json配列の開始
+        // json array start
         if (line.find("[") != std::string::npos)
         {
+            // set inArray to true
             inArray = true;
             continue;
         }
 
-        // json配列の終了
+        // json array end
         if (line.find("]") != std::string::npos)
         {
+            // set inArray to false
             inArray = false;
             break;
         }
 
-        // ダブルクオートで囲まれた文字列を処理
+        // manage double-quoted strings
         if (inArray && line.find("\"") != std::string::npos)
         {
-            // 最初と最後のダブルクオートの位置を見つける
             size_t start = line.find("\"");
             size_t end = line.rfind("\"");
-
             if (start != std::string::npos && end != std::string::npos && start < end)
             {
-                // クオート間の文字列を抽出
                 std::string sentence = line.substr(start + 1, end - start - 1);
                 if (!sentence.empty())
                 {
@@ -106,69 +107,71 @@ std::vector<std::string> JSONManager::loadSentences(const std::string& filename)
     return sentenceList;
 }
 
-// JSONファイルからスコアのリストを読み込む関数
+// read scores from JSON file
 std::vector<PlayerScore> JSONManager::loadScores(const std::string& filename) const
 {
-    // スコアのリストを格納するベクター
+    // vector to hold list of scores
     std::vector<PlayerScore> scores;
 
     std::ifstream file(filename);
 
-    // ファイルが開けなかった場合、空のリストを返す
+    // if file failed to open, return empty list
     if (!file.is_open())
     {
         return scores;
     }
 
-    // ファイルの各行を保持
+    // hold each line of the file
     std::string line;
     PlayerScore currentScore;
-    // オブジェクトの中にいるかどうか
+    // unless we are inside the array
     bool inObject = false;
 
-    // ファイルから各行を読み込む
+    // read each line from the file
     while (std::getline(file, line))
     {
-        // 前後の空白を削除
+        // delete leading/trailing whitespace
         line = trim(line);
 
-        // jsonオブジェクトの開始
+        // json array start
         if (line.find("{") != std::string::npos)
         {
+            // set inObject to true
             inObject = true;
-            // currentScoreを初期化
+            // initialize currentScore
             currentScore.username = "";
+            // set score 0
             currentScore.score = 0;
         }
 
         if (inObject)
         {
-            // "username"フィールドをチェック
+            // check for "username" field
             if (line.find("\"username\"") != std::string::npos)
             {
-                // コロンを探す
+                // find :
                 size_t colonPos = line.find(":");
                 if (colonPos != std::string::npos)
                 {
-                    // コロンの後の部分文字列を取得
+                    // get substring after colon
                     std::string value = line.substr(colonPos + 1);
                     value = trim(value);
                     if (value.back() == ',')
                     {
                         value = value.substr(0, value.length() - 1);
                     }
-                    // 文字列をパースしてusernameを設定
+                    // set username after parsing string
                     currentScore.username = parseString(value);
                 }
             }
-            // "score"フィールドを探す
+            // find "score" field
             else if (line.find("\"score\"") != std::string::npos)
             {
-                // コロンの位置を探す
+                // find the position of colon
                 size_t colonPos = line.find(":");
                 if (colonPos != std::string::npos)
                 {
-                    // コロンの後の部分文字列を取得
+                    // get substring after colon
                     std::string value = line.substr(colonPos + 1);
                     value = trim(value);
                     if (value.back() == ',')
@@ -194,23 +197,23 @@ std::vector<PlayerScore> JSONManager::loadScores(const std::string& filename) co
     return scores;
 }
 
-// JSONファイルにスコアを保存する関数
+// save scores to JSON file
 void JSONManager::saveScores(const std::string& filename, const std::vector<PlayerScore>& scores) const
 {
-    // 書き込み用にファイルを開く
+    // open file for writing
     std::ofstream file(filename);
 
-    // ファイルが開けなかった場合
+    // if file failed to open
     if (!file.is_open())
     {
         std::cerr << "ERROR: Failed to open scores file for writing: " << filename << std::endl;
         return;
     }
 
-    // JSON配列の開始ブラケットを書き込む
+    // write opening bracket for JSON array
     file << "[\n";
 
-    // 各スコアオブジェクトを書き込む
+    // write each score object
     for (size_t i = 0; i < scores.size(); ++i)
     {
         file << "  {\n";
@@ -218,7 +221,7 @@ void JSONManager::saveScores(const std::string& filename, const std::vector<Play
         file << "    \"score\": " << scores[i].score << "\n";
         file << "  }";
 
-        // 最後の要素でなければカンマを追加
+        // add comma if not last element
         if (i < scores.size() - 1)
         {
             file << ",";

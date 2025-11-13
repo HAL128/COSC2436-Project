@@ -7,72 +7,83 @@
 #include "JSONManager.h"
 #include <string>
 #include <vector>
+#include <stack>
 #include <chrono>
 
-// ゲーム全体を管理するクラス
+// Game Class to manage the overall typing game
 class Game
 {
 private:
-    // プレイヤーオブジェクト：名前とスコアを保持
+    // player object to hold player info: name and score
     Player player;
 
-    // 現在タイプする文
+    // current sentence to type
     Sentence currentSentence;
 
-    // ファイル操作用のJSONマネージャー
+    // JSON manager for file operations
     JSONManager jsonManager;
 
-    // JSONファイルから読み込んだ全ての文
+    // all sentences loaded from JSON file
     std::vector<std::string> allSentences;
+    // sentences available for selection
+    std::vector<std::string> availableSentences;
+    // stack to track used sentences to avoid duplicates
+    std::stack<std::string> usedSentences;
 
-    // ゲーム状態変数
-    int remainingTime; // 残り時間（秒）
-    int timePenalty; // 累積時間ペナルティ（秒）
-    const int TOTAL_TIME = 120; // 総ゲーム時間（秒）
-    const int CORRECT_CHAR_POINTS = 10; // 正解文字ごとのポイント
-    const int COMPLETE_SENTENCE_BONUS = 20; // 文完了ボーナス
-    const int MISTAKE_TIME_PENALTY = 2; // ミスごとの秒ペナルティ
-    const int MISTAKE_SCORE_PENALTY = 5; // ミスごとのスコアペナルティ
+    // game state variables
+    int remainingTime; // remaining time in seconds
+    int timePenalty; // accumulated time penalty in seconds
+    const int TOTAL_TIME = 120; // total game time in seconds
+    const int CORRECT_CHAR_POINTS = 10; // points per correct character
+    const int COMPLETE_SENTENCE_BONUS = 20; // bonus points for completing a sentence
+    const int MISTAKE_TIME_PENALTY = 2; // seconds penalty per mistake
+    const int MISTAKE_SCORE_PENALTY = 5; // score penalty per mistake
 
-    // ユーザー入力文字列：これまでタイプした文字を追跡
+    // user input string to track typed characters
     std::string userInput;
 
-    // 経過時間計算のための開始時刻
+    // start time point for elapsed time calculation
     std::chrono::steady_clock::time_point startTime;
 
 public:
-    // コンストラクタ
+    // Constructor
     Game();
 
-    // メインメニューを表示する関数
+    // display main menu function
     void showMainMenu();
 
-    // ゲームを開始する関数 - タイピングゲームを初期化して開始
+    // start game function - initializes and starts the typing game
     void start();
 
-    // メインゲームループ関数 - タイピングと画面更新を処理
+    // main game loop function - handles typing and screen updates
     void gameLoop();
 
-    // 残り時間バーを表示する関数
+    // display remaining time bar function
     void displayTimeBar() const;
 
-    // scores.jsonからトップNのランキングを表示する関数
-    void displayRanking(int topN = 10) const;
+    // display top 5 rankings from scores.json
+    void displayRanking(int topN = 10, const std::string& highlightUsername = "", bool shouldHighlight = false) const;
 
-    // ユーザー入力文字を処理する関数 - 入力と期待される文字を比較
+    // process user input function - compares input with expected character
     void processInput(char inputChar);
 
-    // 次の文をランダムに読み込む関数
+    // load next sentence randomlly (avoid duplicates using stack!!)
     void loadNextSentence();
 
-    // コンソール画面をクリアする関数
+    // clear the console screen
     void clearScreen() const;
 
-    // 経過時間を秒単位で取得
+    // elapsed time in seconds
     int getElapsedTime() const;
 
-    // 残り時間を更新
+    // update remaining time
     void updateRemainingTime();
+
+    // save new sentence to JSON file
+    void addSentence();
+
+    // display calculating screen function for 3 seconds animation
+    void showCalculatingScreen();
 };
 
 #endif
