@@ -274,7 +274,7 @@ void Game::start()
         {
             if (updatedScores[i].username == currentUsername)
             {
-                userRank = i + 1;
+                userRank = static_cast<int>(i + 1);
                 isNewTopFiveEntry = true;
                 break;
             }
@@ -293,6 +293,13 @@ void Game::start()
 // show calculating results screen for 3 seconds (to avoid accidental input by user)
 void Game::showCalculatingScreen()
 {
+    // hide cursor during calculation
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hConsole, &cursorInfo);
+    cursorInfo.bVisible = FALSE; // hide cursor
+    SetConsoleCursorInfo(hConsole, &cursorInfo);
+
     clearScreen();
     std::cout << "==================================" << std::endl;
     std::cout << "      Calculating Results..." << std::endl;
@@ -319,14 +326,39 @@ void Game::showCalculatingScreen()
         // percent display
         std::cout << "] " << (i * 100 / 30) << "%";
         std::cout.flush();
+
+        // clear any buffered key presses during animation
+        while (_kbhit())
+        {
+            (void)_getch(); // discard the key
+        }
+
         Sleep(100); // 100ms * 30 = 3 seconds
     }
     std::cout << std::endl;
+
+    // clear any remaining buffered key presses after animation
+    while (_kbhit())
+    {
+        (void)_getch(); // discard the key
+    }
+
+    // show cursor again
+    GetConsoleCursorInfo(hConsole, &cursorInfo);
+    cursorInfo.bVisible = TRUE; // show cursor
+    SetConsoleCursorInfo(hConsole, &cursorInfo);
 }
 
 // main game loop function - handles typing and screen updates
 void Game::gameLoop()
 {
+    // hide cursor during game
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hConsole, &cursorInfo);
+    cursorInfo.bVisible = FALSE; // hide cursor
+    SetConsoleCursorInfo(hConsole, &cursorInfo);
+
     // load the first sentence randomly
     loadNextSentence();
 
@@ -347,14 +379,17 @@ void Game::gameLoop()
     displayTimeBar();
     std::cout << std::endl;
     std::cout << "Type the following sentence:" << std::endl;
-    std::cout << std::endl;
 
     // display the current sentence with progress coloring
     currentSentence.displayWithProgress(userInput);
     std::cout << std::endl;
 
+    // blank line between sentence and input
+    std::cout << std::endl;
+
     // display initial user input line
-    std::cout << "Your input: " << userInput << std::endl;
+    std::cout << "Your input:" << std::endl;
+    std::cout << userInput << std::endl;
 
     // record last displayed remaining time and score
     int lastDisplayedTime = remainingTime;
@@ -434,21 +469,48 @@ void Game::gameLoop()
             displayTimeBar();
             std::cout << std::string(80, ' ') << std::endl;
             std::cout << "Type the following sentence:" << std::string(60, ' ') << std::endl;
-            std::cout << std::string(80, ' ') << std::endl;
 
             // display current sentence with progress coloring
             currentSentence.displayWithProgress(userInput);
+
+            // clear rest of sentence line
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            GetConsoleScreenBufferInfo(hConsole, &csbi);
+            COORD clearPos = csbi.dwCursorPosition;
+            DWORD written;
+            FillConsoleOutputCharacter(hConsole, ' ', csbi.dwSize.X - clearPos.X, clearPos, &written);
             std::cout << std::endl;
 
-            // display user input line (clear previous input first)
-            std::cout << "\r" << std::string(150, ' ') << "\r"; // clear input line and return to beginning
-            std::string inputLine = "Your input: " + userInput;
-            std::cout << inputLine << std::endl;
+            // blank line between sentence and input
+            std::cout << std::string(80, ' ') << std::endl;
+
+            // display "Your input:" label
+            std::cout << "Your input:" << std::string(70, ' ') << std::endl;
+
+            // clear input display line completely
+            GetConsoleScreenBufferInfo(hConsole, &csbi);
+            clearPos = csbi.dwCursorPosition;
+            FillConsoleOutputCharacter(hConsole, ' ', csbi.dwSize.X, clearPos, &written);
+            SetConsoleCursorPosition(hConsole, clearPos);
+
+            // display user input on next line
+            std::cout << userInput;
+
+            // clear rest of line after input
+            GetConsoleScreenBufferInfo(hConsole, &csbi);
+            clearPos = csbi.dwCursorPosition;
+            FillConsoleOutputCharacter(hConsole, ' ', csbi.dwSize.X - clearPos.X, clearPos, &written);
+            std::cout << std::endl;
 
             lastDisplayedTime = remainingTime;
             lastScore = player.getScore();
         }
     }
+
+    // show cursor again after game ends
+    GetConsoleCursorInfo(hConsole, &cursorInfo);
+    cursorInfo.bVisible = TRUE; // show cursor
+    SetConsoleCursorInfo(hConsole, &cursorInfo);
 }
 
 // remaining time as a progress bar

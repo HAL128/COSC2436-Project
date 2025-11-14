@@ -61,7 +61,6 @@ void Player::updateScoreDB(const std::string& filename, JSONManager& jsonManager
             if (score > playerScore.score)
             {
                 playerScore.score = score;
-                std::cout << "New high score for " << username << "!" << std::endl;
             }
             found = true;
             break;

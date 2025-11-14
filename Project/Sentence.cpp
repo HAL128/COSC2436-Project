@@ -61,9 +61,6 @@ void Sentence::displayWithProgress(const std::string& userInput) const
 
     // reset color to white
     SetConsoleTextAttribute(hConsole, 7);
-
-    // fill rest of line with spaces
-    std::cout << std::string(80, ' ');
 }
 
 // Reset progress

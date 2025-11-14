@@ -24,6 +24,7 @@ public:
     char getNextChar() const;
 
     // Check if typing the sentence is complete
+    // Check if typing the sentence is complete
     // @return true if complete, false otherwise
     bool isComplete() const;
 
